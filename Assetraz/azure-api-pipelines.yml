@@ -1,0 +1,149 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+    - main
+
+stages:
+    - stage: "Api_Build"
+      jobs:
+          - job: "buildtask"
+            pool:
+                name: Azure Pipelines
+
+            steps:
+                - task: DotNetCoreCLI@2
+                  displayName: Restore
+                  inputs:
+                      command: restore
+                      projects: "**/*.csproj"
+
+                - task: DotNetCoreCLI@2
+                  displayName: Build
+                  inputs:
+                      command: "build"
+                      projects: "**/*.csproj"
+                      arguments: "--configuration $(BuildConfiguration)"
+
+                - task: DotNetCoreCLI@2
+                  displayName: Publish
+                  inputs:
+                      command: publish
+                      publishWebProjects: True
+                      projects: "**/*.csproj"
+                      arguments: "--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)"
+                      zipAfterPublish: True
+
+                - task: PublishBuildArtifacts@1
+                  displayName: "Publish Artifact"
+                  inputs:
+                      PathtoPublish: "$(build.artifactstagingdirectory)"
+                  condition: succeededOrFailed()
+
+    - stage: Dev_Deploy_API
+      dependsOn: Api_Build
+      jobs:
+          - deployment: DeployApi
+            displayName: "Dev Deploy API"
+            pool:
+                vmImage: "windows-latest"
+            environment: "dev"
+            strategy:
+                runOnce:
+                    deploy:
+                        steps:
+                            - task: DownloadBuildArtifacts@1
+                              inputs:
+                                  buildType: "current"
+                                  downloadType: "single"
+                                  artifactName: "drop"
+                                  downloadPath: "$(System.ArtifactsDirectory)"
+
+                            - task: AzureRmWebAppDeployment@4
+                              displayName: "Deploy Azure App Service: assetraz-as-api-dev"
+                              inputs:
+                                  ConnectionType: "AzureRM"
+                                  azureSubscription: "Assetraz-Azure Enterprise(M)"
+                                  appType: "webApp"
+                                  WebAppName: "assetraz-as-api-dev"
+                                  deployToSlotOrASE: true
+                                  ResourceGroupName: "Assetraz"
+                                  SlotName: "production"
+                                  packageForLinux: "$(System.ArtifactsDirectory)/drop/*.zip"
+                                  enableCustomDeployment: true
+                                  DeploymentType: "zipDeploy"
+                                  ExcludeFilesFromAppDataFlag: false
+                                  AppSettings: '-ASPNETCORE_ENVIRONMENT Development'
+    
+    - stage: QA_Deploy_API
+      dependsOn: Dev_Deploy_API
+      jobs:
+          - deployment: DeployApi
+            displayName: "QA Deploy API"
+            pool:
+                vmImage: "windows-latest"
+            environment: "qa"
+            strategy:
+                runOnce:
+                    deploy:
+                        steps:
+                            - task: DownloadBuildArtifacts@1
+                              inputs:
+                                  buildType: "current"
+                                  downloadType: "single"
+                                  artifactName: "drop"
+                                  downloadPath: "$(System.ArtifactsDirectory)"
+
+                            - task: AzureRmWebAppDeployment@4
+                              displayName: "Deploy Azure App Service: assetraz-as-api-qa"
+                              inputs:
+                                  ConnectionType: "AzureRM"
+                                  azureSubscription: "Assetraz-Azure Enterprise(M)"
+                                  appType: "webApp"
+                                  WebAppName: "assetraz-as-api-qa"
+                                  deployToSlotOrASE: true
+                                  ResourceGroupName: "Assetraz"
+                                  SlotName: "production"
+                                  packageForLinux: "$(System.ArtifactsDirectory)/drop/*.zip"
+                                  enableCustomDeployment: true
+                                  DeploymentType: "zipDeploy"
+                                  ExcludeFilesFromAppDataFlag: false
+                                  AppSettings: '-ASPNETCORE_ENVIRONMENT QA'
+                                  
+    - stage: Prod_Deploy_API
+      dependsOn: QA_Deploy_API
+      jobs:
+          - deployment: DeployApi
+            displayName: "Prod Deploy API"
+            pool:
+                vmImage: "windows-latest"
+            environment: "prod"
+            strategy:
+                runOnce:
+                    deploy:
+                        steps:
+                            - task: DownloadBuildArtifacts@1
+                              inputs:
+                                  buildType: "current"
+                                  downloadType: "single"
+                                  artifactName: "drop"
+                                  downloadPath: "$(System.ArtifactsDirectory)"
+
+                            - task: AzureRmWebAppDeployment@4
+                              displayName: "Deploy Azure App Service: assetraz-as-api-prd"
+                              inputs:
+                                  ConnectionType: "AzureRM"
+                                  azureSubscription: "Assetraz-Azure Enterprise(M)"
+                                  appType: "webApp"
+                                  WebAppName: "assetraz-as-api-prd"
+                                  deployToSlotOrASE: true
+                                  ResourceGroupName: "Assetraz"
+                                  SlotName: "production"
+                                  packageForLinux: "$(System.ArtifactsDirectory)/drop/*.zip"
+                                  enableCustomDeployment: true
+                                  DeploymentType: "zipDeploy"
+                                  ExcludeFilesFromAppDataFlag: false
+                                  AppSettings: '-ASPNETCORE_ENVIRONMENT PROD'
+                        

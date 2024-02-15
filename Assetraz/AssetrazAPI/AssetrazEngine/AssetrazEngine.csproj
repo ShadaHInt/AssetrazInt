@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.7.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.14.1" />
+    <PackageReference Include="Azure.Storage.Common" Version="12.13.0" />
+    <PackageReference Include="Azure.Storage.Queues" Version="12.12.0" />
+	<PackageReference Include="HtmlRendererCore.PdfSharp" Version="1.0.5" />
+	<PackageReference Include="NETCore.MailKit" Version="2.1.0" />
+	<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AssetrazAccessors\AssetrazAccessors.csproj" />
+    <ProjectReference Include="..\AssetrazCommon\AssetrazCommon.csproj" />
+    <ProjectReference Include="..\AssetrazContracts\AssetrazContracts.csproj" />
+  </ItemGroup>
+
+</Project>

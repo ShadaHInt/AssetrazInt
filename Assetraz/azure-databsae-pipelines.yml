@@ -1,0 +1,32 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+trigger:
+    - main
+
+stages:
+    - stage: "Db_Build"
+      jobs:
+        - job: "buildtask"
+          pool:
+            vmImage: "windows-latest"
+            demands:
+            - msbuild
+            - visualstudio
+
+            variables:
+                BuildPlatform: 'Any CPU'
+                BuildConfiguration: 'Release'
+
+            steps:
+            - task: MSBuild@1
+              displayName: 'Build DB Project'
+              inputs:
+                solution: AssetrazDB/AssetrazDB/AssetrazDB/AssetrazDB.sqlproj
+                msbuildArguments: '/p:DeployOnBuild=true /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:outputpath=$(Build.ArtifactStagingDirectory)'
+                platform: '$(BuildPlatform)'
+                configuration: '$(BuildConfiguration)'
+
+            - publish: $(Build.ArtifactStagingDirectory)
+              artifact: 'database'

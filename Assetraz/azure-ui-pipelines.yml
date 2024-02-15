@@ -1,0 +1,251 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+stages:
+  - stage: "Dev_Build"
+    jobs:
+      - job: "buildtask"
+        pool:
+          name: Azure Pipelines
+          demands: npm
+        steps:
+          - task: NodeTool@0
+            displayName: 'Use Node'
+            inputs:
+              versionSpec: 18.x
+              checkLatest: true
+
+          - task: Npm@1
+            displayName: 'npm install'
+            inputs:
+              command: custom
+              workingDir: AssetrazUI
+              verbose: false
+              customCommand: 'install -force'
+
+          - task: Npm@1
+            displayName: 'npm build'
+            inputs:
+              command: 'custom'
+              workingDir: 'AssetrazUI'
+              customCommand: 'run build-dev'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact to Working Dir'
+            inputs:
+              PathtoPublish: 'AssetrazUI/build'
+              ArtifactName: 'drop-dev'
+              publishLocation: 'Container'
+          
+          - task: CopyFiles@2
+            displayName: 'Copy artifcats from Working Dir to Staging Dir'
+            inputs:
+              SourceFolder: 'AssetrazUI/build'
+              Contents: '**'
+              TargetFolder: '$(Build.ArtifactStagingDirectory)'
+              CleanTargetFolder: true
+              OverWrite: true
+              
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact to Staging Dir'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop-dev'
+              TargetPath: 'Container'
+                                  
+  - stage: Dev_Deploy_App
+    dependsOn: Dev_Build
+    jobs:
+      - deployment: DeployWeb
+        displayName: 'Dev Deploy App'
+        pool:
+          vmImage: 'windows-latest'
+        environment: 'dev'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@1
+                  inputs:
+                    buildType: 'current'
+                    downloadType: 'single'
+                    artifactName: 'drop-dev'
+                    downloadPath: '$(System.ArtifactsDirectory)'
+
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: 'Assetraz-Azure Enterprise(M)'
+                    appType: 'webApp'
+                    appName: 'assetraz-as-web-dev'
+                    deployToSlotOrASE: true
+                    resourceGroupName: 'Assetraz'
+                    slotName: 'production'
+                    package: '$(System.ArtifactsDirectory)/drop-dev'
+                    deploymentMethod: 'auto'
+
+  - stage: "QA_Build"
+    jobs:
+      - job: "buildtask"
+        pool:
+          name: Azure Pipelines
+          demands: npm
+        steps:
+          - task: NodeTool@0
+            displayName: 'Use Node'
+            inputs:
+              versionSpec: 18.x
+              checkLatest: true
+
+          - task: Npm@1
+            displayName: 'npm install'
+            inputs:
+              command: custom
+              workingDir: AssetrazUI
+              verbose: false
+              customCommand: 'install -force'
+
+          - task: Npm@1
+            displayName: 'npm build'
+            inputs:
+              command: 'custom'
+              workingDir: 'AssetrazUI'
+              customCommand: 'run build-qa'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact to Working Dir'
+            inputs:
+              PathtoPublish: 'AssetrazUI/build'
+              ArtifactName: 'drop-qa'
+              publishLocation: 'Container'
+          
+          - task: CopyFiles@2
+            displayName: 'Copy artifcats from Working Dir to Staging Dir'
+            inputs:
+              SourceFolder: 'AssetrazUI/build'
+              Contents: '**'
+              TargetFolder: '$(Build.ArtifactStagingDirectory)'
+              CleanTargetFolder: true
+              OverWrite: true
+              
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact to Staging Dir'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop-qa'
+              TargetPath: 'Container'
+                                  
+  - stage: QA_Deploy_App
+    dependsOn: QA_Build
+    jobs:
+      - deployment: DeployWeb
+        displayName: 'QA Deploy App'
+        pool:
+          vmImage: 'windows-latest'
+        environment: 'qa'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@1
+                  inputs:
+                    buildType: 'current'
+                    downloadType: 'specific'
+                    artifactName: 'drop-qa'
+                    downloadPath: '$(System.ArtifactsDirectory)'
+
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: 'Assetraz-Azure Enterprise(M)'
+                    appType: 'webApp'
+                    appName: 'assetraz-as-web-qa'
+                    deployToSlotOrASE: true
+                    resourceGroupName: 'Assetraz'
+                    slotName: 'production'
+                    package: '$(System.ArtifactsDirectory)/drop-qa'
+                    deploymentMethod: 'auto'
+
+  - stage: "Prod_Build"
+    jobs:
+      - job: "buildtask"
+        pool:
+          name: Azure Pipelines
+          demands: npm
+        steps:
+          - task: NodeTool@0
+            displayName: 'Use Node'
+            inputs:
+              versionSpec: 18.x
+              checkLatest: true
+
+          - task: Npm@1
+            displayName: 'npm install'
+            inputs:
+              command: custom
+              workingDir: AssetrazUI
+              verbose: false
+              customCommand: 'install -force'
+
+          - task: Npm@1
+            displayName: 'npm build'
+            inputs:
+              command: 'custom'
+              workingDir: 'AssetrazUI'
+              customCommand: 'run build-prod'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact to Working Dir'
+            inputs:
+              PathtoPublish: 'AssetrazUI/build'
+              ArtifactName: 'drop-prod'
+              publishLocation: 'Container'
+          
+          - task: CopyFiles@2
+            displayName: 'Copy artifcats from Working Dir to Staging Dir'
+            inputs:
+              SourceFolder: 'AssetrazUI/build'
+              Contents: '**'
+              TargetFolder: '$(Build.ArtifactStagingDirectory)'
+              CleanTargetFolder: true
+              OverWrite: true
+              
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact to Staging Dir'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop-prod'
+              TargetPath: 'Container'
+    
+  - stage: Prod_Deploy_App
+    dependsOn: Prod_Build
+    jobs:
+      - deployment: DeployWeb
+        displayName: 'Prod Deploy App'
+        pool:
+          vmImage: 'windows-latest'
+        environment: 'prod'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@1
+                  inputs:
+                    buildType: 'current'
+                    downloadType: 'specific'
+                    artifactName: 'drop-prod'
+                    downloadPath: '$(System.ArtifactsDirectory)'
+
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: 'Assetraz-Azure Enterprise(M)'
+                    appType: 'webApp'
+                    appName: 'assetraz-as-web-prd'
+                    deployToSlotOrASE: true
+                    resourceGroupName: 'Assetraz'
+                    slotName: 'production'
+                    package: '$(System.ArtifactsDirectory)/drop-prod'
+                    deploymentMethod: 'auto'

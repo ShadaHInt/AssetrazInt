@@ -1,0 +1,8 @@
+﻿CREATE TABLE [dbo].[EmailLogs]
+(
+	[LogID] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY, 
+    [Message] VARCHAR(500) NOT NULL, 
+    [ToList] VARCHAR(MAX) NULL, 
+    [CcList] VARCHAR(MAX) NULL, 
+    [CreatedOn] DATETIME NOT NULL
+)

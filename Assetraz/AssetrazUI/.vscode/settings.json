@@ -1,0 +1,22 @@
+{
+  "workbench.colorCustomizations": { // Can customize each aspect
+      "tab.activeBorderTop": "#5ef123" // Active Tab Top Highlighting
+  },
+  "typescript.tsdk": "node_modules\\typescript\\lib",
+  "editor.tabSize": 2,
+  "eslint.format.enable": true,
+  "eslint.run": "onSave",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": [
+    "javascript", 
+    "typescript"
+  ],
+  "editor.formatOnSave": true,
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "prettier.useTabs": true,  
+  "prettier.tabWidth": 4,
+}

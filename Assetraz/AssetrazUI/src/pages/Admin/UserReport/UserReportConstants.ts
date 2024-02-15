@@ -1,0 +1,1 @@
+export const UR_FILTER_COLUMNS = ["User Name", "Email", "Company Name", "Manager"];

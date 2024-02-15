@@ -1,0 +1,132 @@
+trigger:
+    - main
+
+stages:
+    - stage: "Functions_Build"
+      jobs:
+          - job: "buildtask"
+            pool:
+                name: Azure Pipelines
+
+            steps:
+                - task: DotNetCoreCLI@2
+                  displayName: Restore
+                  inputs:
+                      command: restore
+                      projects: "**/*.csproj"
+
+                - task: DotNetCoreCLI@2
+                  displayName: Build
+                  inputs:
+                      command: "build"
+                      projects: "**/AssetrazFunctions.csproj"
+                      arguments: "--configuration $(BuildConfiguration)"
+
+                - task: DotNetCoreCLI@2
+                  displayName: Publish
+                  inputs:
+                      command: publish
+                      publishWebProjects: false
+                      projects: "**/AssetrazFunctions.csproj"
+                      arguments: "--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)"
+                      zipAfterPublish: True
+
+                - task: PublishBuildArtifacts@1
+                  displayName: "Publish Artifact"
+                  inputs:
+                      PathtoPublish: "$(build.artifactstagingdirectory)"
+                      ArtifactName: functions
+                  condition: succeededOrFailed()
+
+    - stage: Dev_Deploy_Functions
+      dependsOn: Functions_Build
+      jobs:
+          - deployment: DeployFunctions
+            displayName: "Dev Deploy Functions"
+            pool:
+                vmImage: "windows-latest"
+            environment: "dev"
+            strategy:
+                runOnce:
+                    deploy:
+                        steps:
+                            - task: DownloadBuildArtifacts@1
+                              inputs:
+                                  buildType: "current"
+                                  downloadType: "single"
+                                  artifactName: "functions"
+                                  downloadPath: "$(System.ArtifactsDirectory)"
+
+                            - task: AzureFunctionApp@1
+                              displayName: "Deploy Azure App Service: assetraz-as-fn-notification-dev"
+                              inputs:
+                                  azureSubscription: "Assetraz-Azure Enterprise(M)"
+                                  appType: "functionApp"
+                                  appName: "assetraz-as-fn-notification-dev"
+                                  deployToSlotOrASE: true
+                                  ResourceGroupName: "Assetraz"
+                                  SlotName: "production"
+                                  package: "$(System.ArtifactsDirectory)/functions/*.zip"
+                                  AppSettings: '-ASPNETCORE_ENVIRONMENT Development'
+
+    - stage: QA_Deploy_Functions
+      dependsOn: Dev_Deploy_Functions
+      jobs:
+          - deployment: DeployFunctions
+            displayName: "QA Deploy Functions"
+            pool:
+                vmImage: "windows-latest"
+            environment: "qa"
+            strategy:
+                runOnce:
+                    deploy:
+                        steps:
+                            - task: DownloadBuildArtifacts@1
+                              inputs:
+                                  buildType: "current"
+                                  downloadType: "single"
+                                  artifactName: "functions"
+                                  downloadPath: "$(System.ArtifactsDirectory)"
+
+                            - task: AzureFunctionApp@1
+                              displayName: "Deploy Azure App Service: assetraz-as-fn-notification-qa"
+                              inputs:
+                                  azureSubscription: "Assetraz-Azure Enterprise(M)"
+                                  appType: "functionApp"
+                                  appName: "assetraz-as-fn-notification-qa"
+                                  deployToSlotOrASE: true
+                                  ResourceGroupName: "Assetraz"
+                                  SlotName: "production"
+                                  package: "$(System.ArtifactsDirectory)/functions/*.zip"
+                                  AppSettings: '-ASPNETCORE_ENVIRONMENT qa'
+
+    - stage: Prod_Deploy_Functions
+      dependsOn: QA_Deploy_Functions
+      jobs:
+          - deployment: DeployFunctions
+            displayName: "Prod Deploy Functions"
+            pool:
+                vmImage: "windows-latest"
+            environment: "prod"
+            strategy:
+                runOnce:
+                    deploy:
+                        steps:
+                            - task: DownloadBuildArtifacts@1
+                              inputs:
+                                  buildType: "current"
+                                  downloadType: "single"
+                                  artifactName: "functions"
+                                  downloadPath: "$(System.ArtifactsDirectory)"
+
+                            - task: AzureFunctionApp@1
+                              displayName: "Deploy Azure App Service: assetraz-as-fn-notification-prd"
+                              inputs:
+                                  azureSubscription: "Assetraz-Azure Enterprise(M)"
+                                  appType: "functionApp"
+                                  appName: "assetraz-as-fn-notification-prd"
+                                  deployToSlotOrASE: true
+                                  ResourceGroupName: "Assetraz"
+                                  SlotName: "production"
+                                  package: "$(System.ArtifactsDirectory)/functions/*.zip"
+                                  AppSettings: '-ASPNETCORE_ENVIRONMENT prod'
